@@ -828,33 +828,37 @@ namespace HeroEngine {
     const DEMO_HERO4_IDLE = img`...`
 
     //% blockId=hero1_animate
-    //% block="Hero 1 animate for button $button"
+    //% block="Hero 1 animate (anim $animKey dir $direction)"
     //% group="Hero animations"
-    //% weight=100
+    //% weight=100   
+    export function animateHero1(hero: Sprite, animKey: string, timeMs: number, direction: string) {
+        hero.setImage(DEMO_HERO1_IDLE)
+    }
+
     export function animateHero1(hero: Sprite, animKey: string, timeMs: number, direction: string) {
         hero.setImage(DEMO_HERO1_IDLE)
     }
 
     //% blockId=hero2_animate
-    //% block="Hero 2 animate for button $button"
+    //% block="Hero 2 animate (anim $animKey dir $direction)"
     //% group="Hero animations"
-    //% weight=90
+    //% weight=100   
     export function animateHero2(hero: Sprite, animKey: string, timeMs: number, direction: string) {
         hero.setImage(DEMO_HERO2_IDLE)
     }
 
     //% blockId=hero3_animate
-    //% block="Hero 3 animate for button $button"
+    //% block="Hero 3 animate (anim $animKey dir $direction)"
     //% group="Hero animations"
-    //% weight=80
+    //% weight=100   
     export function animateHero3(hero: Sprite, animKey: string, timeMs: number, direction: string) {
         hero.setImage(DEMO_HERO3_IDLE)
     }
 
     //% blockId=hero4_animate
-    //% block="Hero 4 animate for button $button"
+    //% block="Hero 4 animate (anim $animKey dir $direction)"
     //% group="Hero animations"
-    //% weight=70
+    //% weight=100   
     export function animateHero4(hero: Sprite, animKey: string, timeMs: number, direction: string) {
         hero.setImage(DEMO_HERO4_IDLE)
     }
