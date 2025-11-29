@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 // --------------------------------------------------------------
 // HERO ENGINE V20 – FUNCTION INDEX
 // --------------------------------------------------------------
@@ -126,6 +133,31 @@
 //
 
 
+
+
+
+
+
+
+
+
+
+
+
+// Allow referring to globalThis when a host (like Phaser) provides it.
+// In MakeCode Arcade this is just a type declaration; the try/catch below
+// will swallow any runtime issue if it's missing.
+
+
+
+
+
+declare const globalThis: any;
+
+
+
+
+
 // ================================================================
 // SECTION 1 - ENGINE CONSTANTS, DATA KEYS & GLOBALS
 // ================================================================
@@ -152,8 +184,8 @@ const DBG_INT_INTERVAL_MS = 50
 // --------------------------------------------------------------
 
 namespace userconfig {
-    export const ARCADE_SCREEN_WIDTH = 160
-    export const ARCADE_SCREEN_HEIGHT = 120
+    export const ARCADE_SCREEN_WIDTH = 640
+    export const ARCADE_SCREEN_HEIGHT = 480
 }
 
 // --------------------------------------------------------------
@@ -258,6 +290,7 @@ const AGI_MIN_VISUAL_LEN = 3
 //   • Read by:    applyDamageToHeroIndex(), control-lock logic,
 //                 combo handling, AGI/STR/INT modules, auras
 // --------------------------------------------------------------
+
 const HERO_DATA = {
     HP: "hp", MAX_HP: "maxHp", MANA: "mana", MAX_MANA: "maxMana",
     FAMILY: "family", BUTTON: "btn",
@@ -271,8 +304,15 @@ const HERO_DATA = {
     AGI_DASH_UNTIL: "aDashUntil",      // when AGI dash ends (ms)
     AGI_COMBO_UNTIL: "aComboUntil",    // when AGI combo window ends (ms)
     STR_INNER_RADIUS: "strInnerR",     // STR smash inner radius (per-hero cache)
-    OWNER: "owner"                     // future: which player "owns" this hero
+    OWNER: "owner",                    // which player "owns" this hero
+
+    // NEW: engine-side state we want exposed
+    BUSY_UNTIL: "busyUntil",           // heroBusyUntil[heroIndex]
+    MOVE_SPEED_MULT: "mvMult",         // heroMoveSpeedMult[heroIndex]
+    DAMAGE_AMP_MULT: "dmgMult",        // heroDamageAmpMult[heroIndex]
+    BUFF_JSON: "buffsJson"             // JSON snapshot of heroBuffs[heroIndex]
 }
+
 
 // --------------------------------------------------------------
 // ENEMY_DATA – sprite data schema for enemies
@@ -373,6 +413,11 @@ const INT_RADIUS_KEY = "INT_RAD"
 const INT_DETONATE_START_KEY = "INT_DS"   // detonation start time (ms)
 const INT_DETONATE_END_KEY = "INT_DE"     // detonation end time (ms)
 
+// NEW: control window (when the player must finish aiming)
+const INT_CTRL_UNTIL_KEY = "INT_CTRL_UNTIL"
+
+
+
 // --------------------------------------------------------------
 // GLOBAL ARRAYS – core engine collections
 // These are what the main update loops iterate over.
@@ -380,6 +425,16 @@ const INT_DETONATE_END_KEY = "INT_DE"     // detonation end time (ms)
 let heroes: Sprite[] = []
 let enemies: Sprite[] = []
 let heroProjectiles: Sprite[] = []
+
+
+
+
+// Global world time (ms since this game instance started)
+// We update this once per master update so the wrapper/save system
+// has a single authoritative value to export.
+let worldRuntimeMs = 0
+
+
 
 // NEW: hero buff state (per-hero arrays)
 let heroBuffs: any[][] = [[], [], [], []]
@@ -460,6 +515,46 @@ const AURA_COLOR_HEAL = 7 // green-ish
 // SECTION 2 - HELPER FUNCTIONS
 // ================================================================
 // Utility helpers used across the engine. Stateless. No side effects.
+
+
+
+// ==========================================
+// Optional host hero-logic hook (Phaser/VS)
+// ==========================================
+type HeroLogicFn = (
+    button: string,
+    heroIndex: number,
+    enemiesArr: Sprite[],
+    heroesArr: Sprite[]
+) => number[]
+
+type HeroLogicResolver = (
+    profile: string,
+    heroIndex: number,
+    button: string,
+    enemiesArr: Sprite[],
+    heroesArr: Sprite[]
+) => number[] | null
+
+let hostHeroLogicResolver: HeroLogicResolver = null
+
+// Exists in both MC and Phaser builds.
+// In MC: nobody calls this → hostHeroLogicResolver stays null.
+// In Phaser: heroLogicHost.ts calls it via globalThis (see below).
+function __setHostHeroLogicResolver(fn: HeroLogicResolver) {
+    hostHeroLogicResolver = fn
+}
+
+// Make it visible to the Phaser side without using `export` in this file.
+const __g_any: any = (globalThis as any)
+__g_any.__setHostHeroLogicResolver = __setHostHeroLogicResolver
+
+
+
+
+
+
+
 function makeBaseStats(baseTimeMs: number) {
     const stats: number[] = []
     for (let i = 0; i < STAT.LEN; i++) stats[i] = 0
@@ -530,6 +625,13 @@ function r3(v: number) { return Math.round(v * 1000) / 1000 }
 // Student-facing logic/animation functions. Safe for modification.
 // Engine never writes to these.
 // Example logic (Hero 1). Students will customize.
+
+
+//% blockId=hero1_logic
+//% block="Hero 1 logic for button %button"
+//% blockNamespace=HeroEngine
+//% group="Hero logic"
+//% weight=100
 function hero1Logic(button: string, heroIndex: number, enemiesArr: Sprite[], heroesArr: Sprite[]) {
     const me = heroesArr[heroIndex]
     let targetIndex = -1
@@ -568,7 +670,12 @@ function hero1Logic(button: string, heroIndex: number, enemiesArr: Sprite[], her
     return [FAMILY.STRENGTH, 0, 25, 25, 25, ELEM.NONE, ANIM.ID.IDLE]
 }
 
-// Scaffolds 2–4 (unchanged selection)
+
+//% blockId=hero2_logic
+//% block="Hero 2 logic for button %button"
+//% blockNamespace=HeroEngine
+//% group="Hero logic"
+//% weight=100
 function hero2Logic(button: string, heroIndex: number, enemiesArr: Sprite[], heroesArr: Sprite[]) {
     const me = heroesArr[heroIndex]
     let targetIndex = -1
@@ -609,7 +716,11 @@ function hero2Logic(button: string, heroIndex: number, enemiesArr: Sprite[], her
     return [FAMILY.STRENGTH, 0, 25, 25, 25, ELEM.NONE, ANIM.ID.IDLE]
 }
 
-
+//% blockId=hero3_logic
+//% block="Hero 3 logic for button %button"
+//% blockNamespace=HeroEngine
+//% group="Hero logic"
+//% weight=100
 function hero3Logic(button: string, heroIndex: number, enemiesArr: Sprite[], heroesArr: Sprite[]) {
     const me = heroesArr[heroIndex]
     let targetIndex = -1
@@ -650,7 +761,11 @@ function hero3Logic(button: string, heroIndex: number, enemiesArr: Sprite[], her
     return [FAMILY.STRENGTH, 0, 25, 25, 25, ELEM.NONE, ANIM.ID.IDLE]
 }
 
-
+//% blockId=hero4_logic
+//% block="Hero 4 logic for button %button"
+//% blockNamespace=HeroEngine
+//% group="Hero logic"
+//% weight=100
 function hero4Logic(button: string, heroIndex: number, enemiesArr: Sprite[], heroesArr: Sprite[]) {
     const me = heroesArr[heroIndex]
     let targetIndex = -1
@@ -772,18 +887,39 @@ const DEMO_HERO4_IDLE = img`
 // Students can replace this logic completely.
 // Right now, each hero just uses its idle image regardless of direction or animKey.
 
+
+//% blockId=hero1_animate
+//% block="Hero 1 animate for button %button"
+//% blockNamespace=HeroEngine
+//% group="Hero animations"
+//% weight=100
 function animateHero1(hero: Sprite, animKey: string, timeMs: number, direction: string) {
     hero.setImage(DEMO_HERO1_IDLE)
 }
 
+//% blockId=hero2_animate
+//% block="Hero 2 animate for button %button"
+//% blockNamespace=HeroEngine
+//% group="Hero animations"
+//% weight=100
 function animateHero2(hero: Sprite, animKey: string, timeMs: number, direction: string) {
     hero.setImage(DEMO_HERO2_IDLE)
 }
 
+//% blockId=hero3_animate
+//% block="Hero 3 animate for button %button"
+//% blockNamespace=HeroEngine
+//% group="Hero animations"
+//% weight=100
 function animateHero3(hero: Sprite, animKey: string, timeMs: number, direction: string) {
     hero.setImage(DEMO_HERO3_IDLE)
 }
 
+//% blockId=hero4_animate
+//% block="Hero 4 animate for button %button"
+//% blockNamespace=HeroEngine
+//% group="Hero animations"
+//% weight=100
 function animateHero4(hero: Sprite, animKey: string, timeMs: number, direction: string) {
     hero.setImage(DEMO_HERO4_IDLE)
 }
@@ -795,15 +931,125 @@ function animateHero4(hero: Sprite, animKey: string, timeMs: number, direction: 
 // Creating, locking/unlocking, and animating heroes. 
 // Owns hero movement, controller binding, and base stats.
 
+// Default hero profile names per slot (index 0..3).
+// On MakeCode, this is the only thing used.
+// On Phaser, the wrapper can override via globalThis.__heroProfiles.
+const HERO_SLOT_PROFILE_DEFAULTS = ["Default", "Default", "Default", "Default"];
+
+
+
+
+
+// Hook: resolve a "profile name" for this hero.
+// In Phaser, the wrapper may set (globalThis as any).__heroProfiles
+// to an array like ["Jason", "Default", "Default", "Default"].
+// In MakeCode, globalThis may not exist, so we swallow errors and
+// just fall back to the default profile.
+
+
+function getHeroProfileForHeroIndex(heroIndex: number): string {
+    const hero = heroes[heroIndex]
+    if (!hero) return "Default"
+
+    // Prefer mapping by owner/playerId so join order lines up with profiles
+    const ownerId = sprites.readDataNumber(hero, HERO_DATA.OWNER) | 0
+    const slotIndex = ownerId > 0 ? ownerId - 1 : heroIndex
+
+    // Default profile name from engine's own table
+    let name = HERO_SLOT_PROFILE_DEFAULTS[slotIndex] || "Default"
+
+    // OPTIONAL override from host (Phaser / VS / custom glue file)
+    try {
+        const g: any = globalThis
+        if (g && g.__heroProfiles && typeof g.__heroProfiles[slotIndex] === "string") {
+            name = g.__heroProfiles[slotIndex]
+        }
+    } catch (e) {
+        // In MakeCode Arcade, globalThis may not exist; we just keep the default.
+    }
+
+    return name
+}
+
+
+
 function runHeroLogicForHero(heroIndex: number, button: string) {
     const hero = heroes[heroIndex]
     if (!hero) return null
+
+    // Which profile / student owns this hero?
+    const profile = getHeroProfileForHeroIndex(heroIndex)
+
+    // 1) Optional host-provided logic (Phaser / VS only)
+    // In MakeCode, hostHeroLogicResolver will stay null and this is skipped.
+    if (hostHeroLogicResolver) {
+        const hostOut = hostHeroLogicResolver(
+            profile,
+            heroIndex,
+            button,
+            enemies,
+            heroes
+        )
+        if (hostOut && hostOut.length) return hostOut
+    }
+
+    // 2) Built-in default routing (exact original behavior)
     if (heroIndex == 0) return hero1Logic(button, heroIndex, enemies, heroes)
     if (heroIndex == 1) return hero2Logic(button, heroIndex, enemies, heroes)
     if (heroIndex == 2) return hero3Logic(button, heroIndex, enemies, heroes)
     if (heroIndex == 3) return hero4Logic(button, heroIndex, enemies, heroes)
     return hero1Logic(button, heroIndex, enemies, heroes)
 }
+
+
+
+function runHeroLogicForHeroOLD(heroIndex: number, button: string) {
+    const hero = heroes[heroIndex]
+    if (!hero) return null
+
+    // Which profile / student owns this hero?
+    const profile = getHeroProfileForHeroIndex(heroIndex)
+
+    // OPTIONAL: host-provided hero logic (VS / Phaser only)
+    // This is a no-op in MakeCode Arcade if globalThis or these hooks don't exist.
+    try {
+        const g: any = globalThis
+
+        // Option A: mapping by profile name
+        //    globalThis.__heroLogicByProfile["Alice"](button, heroIndex, enemies, heroes)
+        if (g && g.__heroLogicByProfile && typeof g.__heroLogicByProfile[profile] === "function") {
+            return g.__heroLogicByProfile[profile](button, heroIndex, enemies, heroes)
+        }
+
+        // Option B: mapping by hero index
+        //    globalThis.__heroLogicByIndex[0](button, heroIndex, enemies, heroes)
+        if (g && g.__heroLogicByIndex && typeof g.__heroLogicByIndex[heroIndex] === "function") {
+            return g.__heroLogicByIndex[heroIndex](button, heroIndex, enemies, heroes)
+        }
+
+        // Option C: dynamic function name based on profile:
+        //    function heroLogic_Alice(button, idx, enemies, heroes) { ... }
+        //    globalThis.heroLogic_Alice = ...
+        const funcName = "heroLogic_" + profile
+        if (g && typeof g[funcName] === "function") {
+            return g[funcName](button, heroIndex, enemies, heroes)
+        }
+    } catch (e) {
+        // Ignore: environments without globalThis or hooks just fall through.
+    }
+
+    // Built-in default routing (exact original behavior)
+    if (heroIndex == 0) return hero1Logic(button, heroIndex, enemies, heroes)
+    if (heroIndex == 1) return hero2Logic(button, heroIndex, enemies, heroes)
+    if (heroIndex == 2) return hero3Logic(button, heroIndex, enemies, heroes)
+    if (heroIndex == 3) return hero4Logic(button, heroIndex, enemies, heroes)
+    return hero1Logic(button, heroIndex, enemies, heroes)
+}
+
+
+
+
+
 
 function calculateMoveStatsForFamily(family: number, button: string, traits: number[]) {
     const baseTime = getBaseMoveDurationMs(button, family)
@@ -823,6 +1069,9 @@ function doHeroMoveForPlayer(playerId: number, button: string) {
     if (!hero) return
     const now = game.runtime()
 
+    // Trap world time so the wrapper/save system can see it
+    worldRuntimeMs = now
+
     // Respect busy window
     const busyUntil = heroBusyUntil[heroIndex] || 0
     if (busyUntil > 0 && now < busyUntil) return
@@ -833,19 +1082,28 @@ function doHeroMoveForPlayer(playerId: number, button: string) {
     // If in the middle of a support puzzle, ignore new move inputs
     if (supportPuzzleActive[heroIndex]) return
 
+
     // -----------------------------
     // Student logic (OUT array)
+    // Shape: [family, t1, t2, t3, t4, element, animId]
     // -----------------------------
     const out = runHeroLogicForHero(heroIndex, button)
-    if (!out || out.length < OUT.LEN) return
 
-    const family = out[OUT.FAMILY]
-    const t1 = out[OUT.TRAIT1] | 0
-    const t2 = out[OUT.TRAIT2] | 0
-    const t3 = out[OUT.TRAIT3] | 0
-    const t4 = out[OUT.TRAIT4] | 0
-    const element = out[OUT.ELEMENT] | 0
-    const animId = out[OUT.ANIM_ID] | 0
+    // Guard against bad / missing logic output
+    // We expect at least 7 entries: 0..6
+    if (!out || out.length < 7) {
+        console.log(`[MOVE] hero=${heroIndex} button=${button} invalid OUT=${out ? "[" + out.join(",") + "]" : "null"}`);
+        return;
+    }
+
+    // Positional unpack (avoid OUT.* at runtime in Arcade)
+    const family = out[0] | 0;  // FAMILY
+    const t1 = out[1] | 0;  // TRAIT1
+    const t2 = out[2] | 0;  // TRAIT2
+    const t3 = out[3] | 0;  // TRAIT3
+    const t4 = out[4] | 0;  // TRAIT4
+    const element = out[5] | 0;  // ELEMENT
+    const animId = out[6] | 0;  // ANIM_ID
 
     // traits[1..4] are the same pools as before; traits[5] holds element for future use
     const traits = [0, t1, t2, t3, t4, element]
@@ -862,6 +1120,12 @@ function doHeroMoveForPlayer(playerId: number, button: string) {
 
     // Trait-driven move stats (per family)
     const stats = calculateMoveStatsForFamily(family, button, traits)
+
+
+
+
+
+
 
     // -----------------------------
     // Mana cost & check
@@ -918,9 +1182,22 @@ function doHeroMoveForPlayer(playerId: number, button: string) {
     // --- Control lock & agility extras ---
 
     // STR / AGI / INT use timed lock via heroBusyUntil
+  
     if (family == FAMILY.STRENGTH || family == FAMILY.AGILITY || family == FAMILY.INTELLECT) {
         lockHeroControls(heroIndex)
-        heroBusyUntil[heroIndex] = now + moveDuration
+        
+        const unlockAt = now + moveDuration
+        heroBusyUntil[heroIndex] = unlockAt
+
+        //heroBusyUntil[heroIndex] = now + moveDuration
+
+        // NEW: mirror onto hero sprite for save/sync
+        sprites.setDataNumber(hero, HERO_DATA.BUSY_UNTIL, unlockAt)
+
+        // NEW: mirror control-lock timestamp onto the hero sprite
+        //sprites.setDataNumber(hero, HERO_DATA.BUSY_UNTIL, heroBusyUntil[heroIndex])
+
+    
     } else if (family == FAMILY.HEAL) {
         // SUPPORT/HEAL: no timed lock here.
         // beginSupportPuzzleForHero() will call lockHeroControls()
@@ -961,6 +1238,23 @@ function doHeroMoveForPlayer(playerId: number, button: string) {
     // Fire animation (students own the sprite art)
     // -----------------------------
     callHeroAnim(heroIndex, animKey, moveDuration)
+
+
+    if (DEBUG_INTEGRATOR) {
+        console.log(
+            "[MOVE] hero=" + heroIndex
+            + " family=" + family
+            + " button=" + button
+            + " vx=" + (hero.vx | 0)
+            + " vy=" + (hero.vy | 0)
+            + " moveDuration=" + moveDuration
+            + " busyUntil=" + (heroBusyUntil[heroIndex] | 0)
+        )
+    }
+
+
+
+
 
     // -----------------------------
     // Hand off to family-specific executors
@@ -1100,6 +1394,15 @@ function createHeroForPlayer(playerId: number, startX: number, startY: number) {
     sprites.setDataNumber(hero, HERO_DATA.TRAIT3, 25)
     sprites.setDataNumber(hero, HERO_DATA.TRAIT4, 25)
 
+
+    // NEW: initialize mirrored engine-side fields
+    sprites.setDataNumber(hero, HERO_DATA.BUSY_UNTIL, 0)
+    sprites.setDataNumber(hero, HERO_DATA.MOVE_SPEED_MULT, 1)
+    sprites.setDataNumber(hero, HERO_DATA.DAMAGE_AMP_MULT, 1)
+    sprites.setDataString(hero, HERO_DATA.BUFF_JSON, "[]")
+
+
+
     heroTargetCircles[heroIndex] = null
 
     initHeroHP(heroIndex, hero, 100)
@@ -1200,6 +1503,8 @@ function callHeroAnim(heroIndex: number, animKey: string, timeMs: number) {
     else if (playerId == 4) animateHero4(hero, animKey, timeMs, direction)
 }
 
+
+
 // ================================================================
 // SECTION 5 - HERO STATS AND UI
 // ================================================================
@@ -1284,6 +1589,8 @@ function showDamageNumber(x: number, y: number, amount: number) {
     const txt = textsprite.create("" + amount)
     txt.setPosition(x, y); txt.setMaxFontHeight(6); txt.lifespan = 400; txt.vy = -20
 }
+
+
 
 function createAuraImageFromHero(hero: Sprite, color: number): Image {
     const base = hero.image
@@ -1606,139 +1913,6 @@ function calculateStrengthStats(baseTimeMs: number, traits: number[]) {
 }
 
 
-function calculateStrengthStatsOLDCODE3(baseTimeMs: number, traits: number[]) {
-    const stats = makeBaseStats(baseTimeMs)
-
-    // Pull raw trait values and clamp them into a sane 0–100 band
-    let tWind = (traits[1] | 0)
-    let tReach = (traits[2] | 0)
-    let tArc = (traits[3] | 0)
-    let tKnock = (traits[4] | 0)
-
-    if (tWind < 0) tWind = 0
-    if (tWind > 1000) tWind = 1000
-    if (tReach < 0) tReach = 0
-    if (tReach > 1000) tReach = 1000
-    if (tArc < 0) tArc = 0
-    if (tArc > 360) tArc = 360
-    if (tKnock < 0) tKnock = 0
-    if (tKnock > 1000) tKnock = 1000
-
-    // ----------------------------------------------------
-    // WINDUP (traits[1]) → damage, move duration, swing time
-    // ----------------------------------------------------
-    // Damage: 80% → 160% as tWind goes 0 → 100
-    stats[STAT.DAMAGE_MULT] = 80 + Math.idiv(tWind * 80, 100)
-
-    // Move duration: 100% → 200% of baseTimeMs as tWind goes 0 → 100
-    const durMultPct = 100 + tWind // 0 → +100%
-    stats[STAT.MOVE_DURATION] = Math.idiv(baseTimeMs * durMultPct, 100)
-
-    // Swing animation time: 400ms → 800ms as tWind goes 0 → 100
-    stats[STAT.STRENGTH_SWING_MS] = 400 + Math.idiv(tWind * 400, 100)
-
-    // ----------------------------------------------------
-    // REACH (traits[2]) → lunge speed
-    // ----------------------------------------------------
-    // Lunge speed: 10 → 30 as tReach goes 0 → 100
-    stats[STAT.LUNGE_SPEED] = 10 + Math.idiv(tReach * 20, 100)
-
-    // ----------------------------------------------------
-    // ARC (traits[3]) → total swing arc degrees
-    // ----------------------------------------------------
-    // Arc: 30° → 150° as tArc goes 0 → 100
-    stats[STAT.STRENGTH_TOTAL_ARC_DEG] = 30 + Math.idiv(tArc * 120, 100)
-
-    // ----------------------------------------------------
-    // KNOCKBACK (traits[4]) → knockback percentage
-    // ----------------------------------------------------
-    // Knockback: 150% → 350% as tKnock goes 0 → 100
-    stats[STAT.KNOCKBACK_PCT] = 150 + Math.idiv(tKnock * 200, 100)
-
-    return stats
-}
-
-
-function calculateStrengthStatsOLDCODE2(baseTimeMs: number, traits: number[]) {
-    const stats = makeBaseStats(baseTimeMs)
-
-    const tWind = traits[1] || 0   // duration & damage pool
-    const tReach = traits[2] || 0   // lunge distance
-    const tArc = traits[3] || 0   // swing total degrees
-    const tKnock = traits[4] || 0   // knockback power
-
-    // Normalize
-    const total = Math.max(1, tWind + tReach + tArc + tKnock)
-    const pWind = tWind / total
-    const pReach = tReach / total
-    const pArc = tArc / total
-    const pKnock = tKnock / total
-
-    // -------------------------------
-    // DAMAGE — scales off windup/damage pool
-    // -------------------------------
-    // 80 → 160 scale
-    stats[STAT.DAMAGE_MULT] = 80 + Math.round(pWind * 80)
-
-    // -------------------------------
-    // MOVE DURATION — longer with more windup investment
-    // -------------------------------
-    const durMultPct = 100 + Math.round(pWind * 120)  // up to +120%
-    stats[STAT.MOVE_DURATION] = Math.idiv(baseTimeMs * durMultPct, 100)
-
-    // -------------------------------
-    // LUNGE SPEED — influenced by reach
-    // -------------------------------
-    // Base 10 → up to +20
-    stats[STAT.LUNGE_SPEED] = 10 + Math.round(pReach * 20)
-
-    // -------------------------------
-    // TOTAL ARC — fully trait-driven
-    // -------------------------------
-    // Base 30°, up to +120° (max 150° swing)
-    stats[STAT.STRENGTH_TOTAL_ARC_DEG] = 30 + Math.round(pArc * 120)
-
-    // -------------------------------
-    // KNOCKBACK — influenced only by tKnock and slightly by tWind
-    // -------------------------------
-    // Starts at +200%, up to +350%
-    stats[STAT.KNOCKBACK_PCT] = 200 + Math.round(pKnock * 150)
-
-    // -------------------------------
-    // SWING TIMING — scale partially by windup
-    // -------------------------------
-    // Base 500ms → up to 800ms
-    stats[STAT.STRENGTH_SWING_MS] = 500 + Math.round(pWind * 300)
-
-    return stats
-}
-
-
-function calculateStrengthStatsOLDCODE(baseTimeMs: number, traits: number[]) {
-    const stats = makeBaseStats(baseTimeMs)
-    const drPool = traits[1] || 0
-    const powerPool = traits[2] || 0
-    const windPool = traits[3] || 0
-    const kbPool = traits[4] || 0
-    const total = Math.max(1, drPool + powerPool + windPool + kbPool)
-    const sharePower = powerPool / total
-    const shareWind = windPool / total
-    const shareKnock = kbPool / total
-
-    // Core balance knobs for static moves, should be hooked up to traits
-    stats[STAT.DAMAGE_MULT] = 80 + Math.round(sharePower * 80)
-    const durationMultPct = 100 + Math.round(shareWind * 100)
-    stats[STAT.MOVE_DURATION] = Math.idiv(baseTimeMs * durationMultPct, 100)
-    stats[STAT.LUNGE_SPEED] = 10
-    stats[STAT.KNOCKBACK_PCT] = 200 + Math.round(shareWind * 100 + shareKnock * 50)
-
-    // Strength-specific shape / timing parameters (centralized here)
-    // These were previously hard-coded in the swing spawn / bitmap builder.
-    stats[STAT.STRENGTH_TOTAL_ARC_DEG] = 30  // sweep angle of the smash arc
-    stats[STAT.STRENGTH_SWING_MS] = 500       // duration of the swing animation
-
-    return stats
-}
 
 
 function executeStrengthMove(
@@ -2241,102 +2415,7 @@ function calculateAgilityStats(
 }
 
 
-function calculateAgilityStatsOLDCODE2(
-    baseTimeMs: number,
-    traits: number[]
-) {
-    const stats = makeBaseStats(baseTimeMs)
 
-    // Pull raw trait values, floor at 0, no upper caps
-    let tCombo = (traits[1] | 0)  // combo window
-    let tDash = (traits[2] | 0)  // dash speed
-    let tIFrame = (traits[3] | 0) // invulnerability window
-    let tSlow = (traits[4] | 0)  // slow/cripple
-
-    if (tCombo < 0) tCombo = 0
-    if (tDash < 0) tDash = 0
-    if (tIFrame < 0) tIFrame = 0
-    if (tSlow < 0) tSlow = 0
-
-    // ----------------------------------------------------
-    // COMBO WINDOW (traits[1]) + a bit of damage flavor
-    // ----------------------------------------------------
-    // Base combo window 200ms, +5ms per point of tCombo
-    stats[STAT.COMBO_WINDOW] = 200 + tCombo * 5
-
-    // Damage: 60% base, +1% per point of tCombo
-    stats[STAT.DAMAGE_MULT] = 60 + tCombo
-
-    // ----------------------------------------------------
-    // DASH SPEED (traits[2]) → lunge speed and duration
-    // ----------------------------------------------------
-    // Faster dash = shorter move duration
-    // Start at baseTimeMs and subtract 5ms per point of tDash,
-    // but never go below 50ms so we don't crash timing
-    let moveDur = baseTimeMs - tDash * 5
-    if (moveDur < 50) moveDur = 50
-    stats[STAT.MOVE_DURATION] = moveDur
-
-    // Lunge speed: base 200, +10 per point of tDash (can get absurd)
-    stats[STAT.LUNGE_SPEED] = 200 + tDash * 10
-
-    // ----------------------------------------------------
-    // INVULNERABILITY (traits[3]) → landing buffer / i-frameish
-    // ----------------------------------------------------
-    // Treat AGILITY_LAND_BUFFER_MS as the base i-frame window and
-    // add 2ms per point of tIFrame.
-    stats[STAT.AGILITY_LAND_BUFFER_MS] = AGI_LANDING_BUFFER_MS + tIFrame * 2
-
-    // ----------------------------------------------------
-    // SLOW / CRIPPLE (traits[4])
-    // ----------------------------------------------------
-    // Slow percent: 10% base, +2% per point of tSlow
-    stats[STAT.SLOW_PCT] = 10 + tSlow * 2
-
-    // Slow duration: 200ms base, +20ms per point of tSlow
-    stats[STAT.SLOW_DURATION] = 200 + tSlow * 20
-
-    return stats
-}
-
-
-function calculateAgilityStatsOLDCODE(
-    baseTimeMs: number,
-    traits: number[]
-) {
-    const stats = makeBaseStats(baseTimeMs)
-    const dmgPool = traits[1] || 0
-    const timePool = traits[2] || 0
-    const movePool = traits[3] || 0
-    const cripPool = traits[4] || 0
-    const total = Math.max(1, dmgPool + timePool + movePool + cripPool)
-    const shareDmg = dmgPool / total
-    const shareTime = timePool / total
-    const shareMove = movePool / total
-    const shareCrip = cripPool / total
-
-    // Core balance knobs
-    stats[STAT.DAMAGE_MULT] = 80 + Math.round(shareDmg * 80)
-    let durationMultPct = 100 - Math.round(shareTime * 30)
-    if (durationMultPct < 70) durationMultPct = 70
-    stats[STAT.MOVE_DURATION] = Math.idiv(baseTimeMs * durationMultPct, 100)
-
-    // Round to 10s so we don't see odd +9 due to integer dt
-    const baseDashSpeed = 400
-    const rawSpeed = baseDashSpeed + Math.round(shareMove * 30)
-    const rounded10 = Math.round(rawSpeed / 10) * 10
-    stats[STAT.LUNGE_SPEED] = Math.max(0, rounded10)
-
-    stats[STAT.SLOW_PCT] = 20 + Math.round(shareCrip * 60)
-    stats[STAT.SLOW_DURATION] = 200 + Math.round(shareCrip * 800)
-    stats[STAT.COMBO_WINDOW] = 300
-
-    // Agility-specific extras (centralized here)
-    // Landing buffer previously came from global AGI_LANDING_BUFFER_MS.
-    stats[STAT.AGILITY_LAND_BUFFER_MS] = AGI_LANDING_BUFFER_MS
-
-    return stats
-}
 
 
 function executeAgilityMove(
@@ -2827,36 +2906,6 @@ function calculateIntellectStats(baseTimeMs: number, traits: number[]) {
 }
 
 
-function calculateIntellectStatsOLDCODE(baseTimeMs: number, traits: number[]) {
-    const stats = makeBaseStats(baseTimeMs)
-    const tTime = traits[1] || 0
-    const tSize = traits[2] || 0
-    const chanPool = traits[3] || 0
-    const weakPool = traits[4] || 0
-    const total = Math.max(1, tTime + tSize + chanPool + weakPool)
-    const shareTime = tTime / total
-    const shareSize = tSize / total
-    const shareChan = chanPool / total
-    const shareWeak = weakPool / total
-
-    // Core timing / shape knobs
-    let targetingTime = 150 + Math.round(shareTime * 350)
-    if (targetingTime < 5000) targetingTime = 5000  // hard floor lives here now
-    stats[STAT.TARGETING_TIME] = targetingTime
-
-    stats[STAT.RING_RADIUS] = 24 - Math.round(shareSize * 12)
-    stats[STAT.DAMAGE_MULT] = 80 + Math.round(shareChan * 80)
-    stats[STAT.CHANNEL_POWER] = 100 + Math.round(shareChan * 100)
-
-    const durationMultPct = 100 + Math.round(shareChan * 80)
-    stats[STAT.MOVE_DURATION] = Math.idiv(baseTimeMs * durationMultPct, 100)
-
-    stats[STAT.WEAKEN_PCT] = 10 + Math.round(shareWeak * 40)
-    stats[STAT.WEAKEN_DURATION] = 500 + Math.round(shareWeak * 1000)
-
-    return stats
-}
-
 
 function executeIntellectMove(
     heroIndex: number,
@@ -2951,7 +3000,11 @@ function beginIntellectTargeting(
 
     // Control time window (our own floor / timer detonation)
     const ctrlUntil = now + lifespanMs
-    sprites.setDataNumber(spell, "INT_CTRL_UNTIL", ctrlUntil)
+//    sprites.setDataNumber(spell, "INT_CTRL_UNTIL", ctrlUntil)
+
+    sprites.setDataNumber(spell, INT_CTRL_UNTIL_KEY, ctrlUntil)
+
+
 
     // 🔵 DEBUG: log spawn + control window
     console.log(
@@ -3027,6 +3080,7 @@ function finishIntellectSpellForHero(heroIndex: number) {
     if (spell) heroControlledSpells[heroIndex] = null
     heroBusyUntil[heroIndex] = 0
     sprites.setDataBoolean(hero, HERO_DATA.INPUT_LOCKED, false)
+    sprites.setDataNumber(hero, HERO_DATA.BUSY_UNTIL, 0)   // NEW
     unlockHeroControls(heroIndex)
 }
 
@@ -3043,7 +3097,11 @@ function updateIntellectSpellsControl() {
         const spell = heroControlledSpells[i]; if (!spell) continue
 
         // Fizzle if floor elapsed and no detonation yet
-        const ctrlUntil = sprites.readDataNumber(spell, "INT_CTRL_UNTIL") | 0
+//        const ctrlUntil = sprites.readDataNumber(spell, "INT_CTRL_UNTIL") | 0
+
+        const ctrlUntil = sprites.readDataNumber(spell, INT_CTRL_UNTIL_KEY) | 0
+
+
         if (ctrlUntil > 0 && now >= ctrlUntil && !sprites.readDataNumber(spell, INT_DETONATED_KEY)) {
             const fam = sprites.readDataNumber(spell, PROJ_DATA.FAMILY)
 
@@ -3558,29 +3616,7 @@ function applySupportBuffToHero(heroIndex: number, kind: number, power: number, 
 }
 
 
-// heroBuffs[heroIndex] is your parallel buff array for that hero
-function applySupportBuffToHeroOLDCODE(heroIndex: number, kind: number, power: number, durationMs: number) {
-    const now = game.runtime()
-    const arr = heroBuffs[heroIndex]
-    if (!arr) {
-        console.log("SUPPORT BUFF: no buff array for hero " + heroIndex)
-        return
-    }
 
-    console.log("SUPPORT BUFF: adding buff kind=" + kind + " power=" + power + " durMs=" + durationMs + " to hero " + heroIndex)
-
-    arr.push({
-        kind: kind,
-        power: power,
-        expiresAt: now + durationMs
-    })
-
-    // Visual feedback: green aura flash when buff lands
-    triggerSupportGlowPulse(heroIndex)
-
-    // One-time heal baked into buff power (you can tune this later)
-    applyHealToHeroIndex(heroIndex, power)
-}
 
 
 
@@ -3622,50 +3658,36 @@ function updateHeroBuffs(now: number) {
 
         heroMoveSpeedMult[hi] = hasteMult
         heroDamageAmpMult[hi] = dmgMult
+
+        // NEW: mirror buff state into hero sprite data so the wrapper/save system
+        // can see it and we can resume mid-buff, mid-dash, etc.
+        const hero = heroes[hi]
+        if (hero) {
+            sprites.setDataNumber(hero, HERO_DATA.MOVE_SPEED_MULT, hasteMult)
+            sprites.setDataNumber(hero, HERO_DATA.DAMAGE_AMP_MULT, dmgMult)
+
+            // Shallow JSON snapshot of active buffs: kind, power, expiry.
+            // (This is enough to reconstruct buff state later.)
+            const snapshot: any[] = []
+            for (let j = 0; j < buffs.length; j++) {
+                const b = buffs[j]
+                if (!b) continue
+                snapshot.push({
+                    kind: b.kind | 0,
+                    power: b.power || 0,
+                    expiresAt: b.expiresAt | 0
+                })
+            }
+            sprites.setDataString(hero, HERO_DATA.BUFF_JSON, JSON.stringify(snapshot))
+        }
+    
+
+
+
+
     }
 }
 
-
-function updateHeroBuffsOLDCODE(now: number) {
-    for (let hi = 0; hi < heroes.length; hi++) {
-        const buffs = heroBuffs[hi]
-        if (!buffs) continue
-
-        // Remove expired
-        for (let j = buffs.length - 1; j >= 0; j--) {
-            const b = buffs[j]
-            if (!b || now >= (b.expiresAt | 0)) {
-                buffs.removeAt(j)
-            }
-        }
-
-        let totalHaste = 0
-        let totalDmgAmp = 0
-
-        for (let j = 0; j < buffs.length; j++) {
-            const b = buffs[j]
-            if (!b) continue
-            if (b.kind == BUFF_KIND_HASTE) {
-                totalHaste += (b.power || 0)
-            } else if (b.kind == BUFF_KIND_DAMAGE_AMP) {
-                totalDmgAmp += (b.power || 0)
-            }
-        }
-
-        // Haste: 50 → 1.5x, 0 → 1x
-        let hasteMult = 1 + totalHaste / 100
-        let dmgMult = 1 + totalDmgAmp / 100
-
-        // Clamp so it doesn't go insane
-        if (hasteMult < 0.5) hasteMult = 0.5
-        if (hasteMult > 3) hasteMult = 3
-        if (dmgMult < 0.5) dmgMult = 0.5
-        if (dmgMult > 3) dmgMult = 3
-
-        heroMoveSpeedMult[hi] = hasteMult
-        heroDamageAmpMult[hi] = dmgMult
-    }
-}
 
 
 
@@ -3773,21 +3795,6 @@ function calculateHealStats(baseTimeMs: number, traits: number[]) {
 }
 
 
-//Heal/Support traits should be calculated using: heal amount at traits[1], haste amount at traits[2], damage amplification at traits[3], damage reduction amount at traits[4]
-function calculateHealStatsOLDCODE(baseTimeMs: number, traits: number[]) {
-    const stats = makeBaseStats(baseTimeMs)
-
-    const pool1 = traits[1] || 0  // heal
-    const pool2 = traits[2] || 0  // haste
-    const pool3 = traits[3] || 0  // damage amp
-    const pool4 = traits[4] || 0  // shield / misc
-    const total = Math.max(1, pool1 + pool2 + pool3 + pool4)
-
-    // Use CHANNEL_POWER as a generic "support power" knob
-    stats[STAT.CHANNEL_POWER] = total
-
-    return stats
-}
 
 
 function executeHealMove(
@@ -3855,54 +3862,21 @@ function executeHealMove(
 }
 
 
-function executeHealMoveOLDCODE(
-    heroIndex: number,
-    hero: Sprite,
-    button: string,
-    traits: number[],
-    stats: number[],
-    now: number
-) {
-    // If a puzzle is already active for this hero, ignore
-    if (supportPuzzleActive[heroIndex]) return
 
-    const pool1 = traits[1] || 0  // heal emphasis
-    const pool2 = traits[2] || 0  // haste emphasis
-    const pool3 = traits[3] || 0  // damage amp emphasis
-    const pool4 = traits[4] || 0  // (unused for now or shield)
-    const total = Math.max(1, pool1 + pool2 + pool3 + pool4)
-
-    // -----------------------------
-    // Puzzle difficulty: sequence length 3–6 based on total pool
-    // -----------------------------
-    //let seqLen = 3 + Math.idiv(total, 40)
-    //if (seqLen < 3) seqLen = 3
-    //if (seqLen > 6) seqLen = 6
-
-    let seqLen = 4
-
-    // Buff duration: fixed-ish, scaled a little by total
-    const buffDurationMs = 3000 + total * 20  // 3–7 sec-ish
-    // Buff "power": for now, use total directly (heal + haste amp)
-    const buffPower = total
-
-    supportPendingBuffPower[heroIndex] = buffPower
-    supportPendingBuffDuration[heroIndex] = buffDurationMs
-    // For now, always haste + heal; we can branch by trait pools later
-    supportPendingBuffKind[heroIndex] = BUFF_KIND_HASTE
-
-    beginSupportPuzzleForHero(heroIndex, seqLen, now)
-}
 
 
 
 function randomSupportDir(): number {
-    const r = randint(0, 3)
-    if (r == 0) return SUP_DIR_UP
-    if (r == 1) return SUP_DIR_DOWN
-    if (r == 2) return SUP_DIR_LEFT
-    return SUP_DIR_RIGHT
+    // Local, engine-only random; no global randint involved
+    const r = Math.floor(Math.random() * 4); // 0,1,2,3
+
+    if (r == 0) return SUP_DIR_UP;
+    if (r == 1) return SUP_DIR_DOWN;
+    if (r == 2) return SUP_DIR_LEFT;
+    return SUP_DIR_RIGHT;
 }
+
+
 
 
 
@@ -4583,13 +4557,26 @@ function updateHeroControlLocks(now: number) {
         if (locked && !isCtrlSpell) {
             hero.vx = sprites.readDataNumber(hero, HERO_DATA.STORED_VX)
             hero.vy = sprites.readDataNumber(hero, HERO_DATA.STORED_VY)
+
+
             const busyUntil = heroBusyUntil[i] || 0
             if (busyUntil > 0 && now >= busyUntil) {
+
+                if (DEBUG_INTEGRATOR) {
+                    console.log("[LOCK-END] hero=" + i + " unlock at " + (now | 0))
+                }
+
                 if (DEBUG_INTEGRATOR) {
                     sprites.setDataNumber(hero, "INT_ID", 0)
                 }
                 unlockHeroControls(i)
                 heroBusyUntil[i] = 0
+
+                // NEW: reflect that unlock into hero data
+                sprites.setDataNumber(hero, HERO_DATA.BUSY_UNTIL, 0)
+
+
+
             }
         }
     }
@@ -4623,6 +4610,10 @@ game.onUpdate(function () {
     updatePlayerInputs()
     const now = game.runtime()
 
+
+    // NEW: keep a canonical world-runtime mirror
+    worldRuntimeMs = now
+
     // Debug integrator logs
     for (let i = 0; i < heroes.length; i++) { const hero = heroes[i]; if (hero) debugDashIntegratorTick(hero) }
 
@@ -4645,7 +4636,15 @@ game.onUpdate(function () {
 
 // Timers
 game.onUpdateInterval(80, function () {
-    if (p1Intent != "") doHeroMoveForPlayer(1, p1Intent)
+    
+//    if (p1Intent != "") doHeroMoveForPlayer(1, p1Intent)
+    if (p1Intent != "") {
+        if (DEBUG_INTEGRATOR) {
+            console.log("[INTENT] P1 " + p1Intent + " at " + (game.runtime() | 0))
+        }
+        doHeroMoveForPlayer(1, p1Intent)
+    }
+
     if (p2Intent != "") doHeroMoveForPlayer(2, p2Intent)
     if (p3Intent != "") doHeroMoveForPlayer(3, p3Intent)
     if (p4Intent != "") doHeroMoveForPlayer(4, p4Intent)
