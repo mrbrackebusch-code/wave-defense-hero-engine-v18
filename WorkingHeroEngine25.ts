@@ -618,310 +618,221 @@ function getAimVectorForHero(heroIndex: number) {
 function r2(v: number) { return Math.round(v * 100) / 100 }
 function r3(v: number) { return Math.round(v * 1000) / 1000 }
 
-
 // ================================================================
 // SECTION 3 - STUDENT HOOKS: HERO LOGIC & ANIMATION
 // ================================================================
-// Student-facing logic/animation functions. Safe for modification.
-// Engine never writes to these.
-// Example logic (Hero 1). Students will customize.
 
+/**
+ * Hero Engine student hooks
+ */
+//% color=#ff8c00 weight=90 icon="\uf11b" block="Hero Engine"
+//% groups=['Hero logic', 'Hero animations']
+namespace HeroEngine {
 
-//% blockId=hero1_logic
-//% block="Hero 1 logic for button %button"
-//% blockNamespace=HeroEngine
-//% group="Hero logic"
-//% weight=100
-function hero1Logic(button: string, heroIndex: number, enemiesArr: Sprite[], heroesArr: Sprite[]) {
-    const me = heroesArr[heroIndex]
-    let targetIndex = -1
-    if (me && enemiesArr.length > 0) {
-        let best = 1e9
-        for (let i = 0; i < enemiesArr.length; i++) {
-            const e = enemiesArr[i]
-            if (!e || (e.flags & sprites.Flag.Destroyed)) continue
-            const d = distanceTo(me, e)
-            if (d < best) { best = d; targetIndex = i }
+    // -----------------------------
+    // HERO LOGIC (students edit)
+    // -----------------------------
+
+    //% blockId=hero1_logic
+    //% block="Hero 1 logic for button $button"
+    //% group="Hero logic"
+    //% weight=100
+    export function hero1Logic(button: string, heroIndex: number, enemiesArr: Sprite[], heroesArr: Sprite[]) {
+        const me = heroesArr[heroIndex]
+        let targetIndex = -1
+        if (me && enemiesArr.length > 0) {
+            let best = 1e9
+            for (let i = 0; i < enemiesArr.length; i++) {
+                const e = enemiesArr[i]
+                if (!e || (e.flags & sprites.Flag.Destroyed)) continue
+                const d = distanceTo(me, e)
+                if (d < best) { best = d; targetIndex = i }
+            }
         }
+
+        let anyHeroLow = false
+        for (let i = 0; i < heroesArr.length; i++) {
+            const h = heroesArr[i]
+            if (!h) continue
+            const hp = sprites.readDataNumber(h, HERO_DATA.HP) | 0
+            if (hp > 0 && hp < 50) {
+                anyHeroLow = true
+                break
+            }
+        }
+
+        if (button == "A") {
+            if (anyHeroLow) {
+                return [FAMILY.HEAL, 25, 25, 25, 25, ELEM.HEAL, ANIM.ID.A]
+            } else {
+                return [FAMILY.STRENGTH, 10, 10, 300, 200, ELEM.NONE, ANIM.ID.A]
+            }
+        }
+        if (button == "B") return [FAMILY.AGILITY, 4, 30, 30, 30, ELEM.NONE, ANIM.ID.B]
+        if (button == "A+B") return [FAMILY.INTELLECT, 100, 25, 25, 25, ELEM.NONE, ANIM.ID.AB]
+        return [FAMILY.STRENGTH, 0, 25, 25, 25, ELEM.NONE, ANIM.ID.IDLE]
     }
 
-    // --- NEW: check if any hero is below 100 HP ---
-    let anyHeroLow = false
-    for (let i = 0; i < heroesArr.length; i++) {
-        const h = heroesArr[i]
-        if (!h) continue
-        const hp = sprites.readDataNumber(h, HERO_DATA.HP) | 0
-        if (hp > 0 && hp < 50) {
-            anyHeroLow = true
-            break
+    //% blockId=hero2_logic
+    //% block="Hero 2 logic for button $button"
+    //% group="Hero logic"
+    //% weight=90
+    export function hero2Logic(button: string, heroIndex: number, enemiesArr: Sprite[], heroesArr: Sprite[]) {
+        const me = heroesArr[heroIndex]
+        let targetIndex = -1
+        if (me && enemiesArr.length > 0) {
+            let best = 1e9
+            for (let i = 0; i < enemiesArr.length; i++) {
+                const e = enemiesArr[i]
+                if (!e || (e.flags & sprites.Flag.Destroyed)) continue
+                const d = distanceTo(me, e)
+                if (d < best) { best = d; targetIndex = i }
+            }
         }
+
+        let anyHeroLow = false
+        for (let i = 0; i < heroesArr.length; i++) {
+            const h = heroesArr[i]
+            if (!h) continue
+            const hp = sprites.readDataNumber(h, HERO_DATA.HP) | 0
+            if (hp > 0 && hp < 50) {
+                anyHeroLow = true
+                break
+            }
+        }
+
+        if (button == "A") {
+            if (anyHeroLow) {
+                return [FAMILY.HEAL, 25, 25, 25, 25, ELEM.HEAL, ANIM.ID.A]
+            } else {
+                return [FAMILY.STRENGTH, 10, 10, 50, 200, ELEM.NONE, ANIM.ID.A]
+            }
+        }
+        if (button == "B") return [FAMILY.AGILITY, 4, 30, 30, 30, ELEM.NONE, ANIM.ID.B]
+        if (button == "A+B") return [FAMILY.INTELLECT, 12, 25, 25, 25, ELEM.NONE, ANIM.ID.AB]
+        return [FAMILY.STRENGTH, 0, 25, 25, 25, ELEM.NONE, ANIM.ID.IDLE]
     }
 
-    // A: Strength, B: Agility, A+B: Intellect. If low HP on A, try Heal instead.
-    if (button == "A") {
-        if (anyHeroLow) {
-            return [FAMILY.HEAL, 25, 25, 25, 25, ELEM.HEAL, ANIM.ID.A]
-        } else {
-            return [FAMILY.STRENGTH, 10, 10, 300, 200, ELEM.NONE, ANIM.ID.A]
+    //% blockId=hero3_logic
+    //% block="Hero 3 logic for button $button"
+    //% group="Hero logic"
+    //% weight=80
+    export function hero3Logic(button: string, heroIndex: number, enemiesArr: Sprite[], heroesArr: Sprite[]) {
+        const me = heroesArr[heroIndex]
+        let targetIndex = -1
+        if (me && enemiesArr.length > 0) {
+            let best = 1e9
+            for (let i = 0; i < enemiesArr.length; i++) {
+                const e = enemiesArr[i]
+                if (!e || (e.flags & sprites.Flag.Destroyed)) continue
+                const d = distanceTo(me, e)
+                if (d < best) { best = d; targetIndex = i }
+            }
         }
-    }
-    if (button == "B") return [FAMILY.AGILITY, 4, 30, 30, 30, ELEM.NONE, ANIM.ID.B]
-    if (button == "A+B") return [FAMILY.INTELLECT, 100, 25, 25, 25, ELEM.NONE, ANIM.ID.AB]
-    return [FAMILY.STRENGTH, 0, 25, 25, 25, ELEM.NONE, ANIM.ID.IDLE]
-}
 
-
-//% blockId=hero2_logic
-//% block="Hero 2 logic for button %button"
-//% blockNamespace=HeroEngine
-//% group="Hero logic"
-//% weight=100
-function hero2Logic(button: string, heroIndex: number, enemiesArr: Sprite[], heroesArr: Sprite[]) {
-    const me = heroesArr[heroIndex]
-    let targetIndex = -1
-    if (me && enemiesArr.length > 0) {
-        let best = 1e9
-        for (let i = 0; i < enemiesArr.length; i++) {
-            const e = enemiesArr[i]
-            if (!e || (e.flags & sprites.Flag.Destroyed)) continue
-            const d = distanceTo(me, e)
-            if (d < best) { best = d; targetIndex = i }
+        let anyHeroLow = false
+        for (let i = 0; i < heroesArr.length; i++) {
+            const h = heroesArr[i]
+            if (!h) continue
+            const hp = sprites.readDataNumber(h, HERO_DATA.HP) | 0
+            if (hp > 0 && hp < 50) {
+                anyHeroLow = true
+                break
+            }
         }
-    }
 
-    // --- NEW: check if any hero is below 100 HP ---
-    let anyHeroLow = false
-    for (let i = 0; i < heroesArr.length; i++) {
-        const h = heroesArr[i]
-        if (!h) continue
-        const hp = sprites.readDataNumber(h, HERO_DATA.HP) | 0
-        if (hp > 0 && hp < 50) {
-            anyHeroLow = true
-            break
+        if (button == "A") {
+            if (anyHeroLow) {
+                return [FAMILY.HEAL, 25, 25, 25, 25, ELEM.HEAL, ANIM.ID.A]
+            } else {
+                return [FAMILY.STRENGTH, 10, 10, 50, 200, ELEM.NONE, ANIM.ID.A]
+            }
         }
+        if (button == "B") return [FAMILY.AGILITY, 4, 30, 30, 30, ELEM.NONE, ANIM.ID.B]
+        if (button == "A+B") return [FAMILY.INTELLECT, 12, 25, 25, 25, ELEM.NONE, ANIM.ID.AB]
+        return [FAMILY.STRENGTH, 0, 25, 25, 25, ELEM.NONE, ANIM.ID.IDLE]
     }
 
-
-
-    // A: Strength, B: Agility, A+B: Intellect. If low HP on A, try Heal instead.
-    if (button == "A") {
-        if (anyHeroLow) {
-            return [FAMILY.HEAL, 25, 25, 25, 25, ELEM.HEAL, ANIM.ID.A]
-        } else {
-            return [FAMILY.STRENGTH, 10, 10, 50, 200, ELEM.NONE, ANIM.ID.A]
+    //% blockId=hero4_logic
+    //% block="Hero 4 logic for button $button"
+    //% group="Hero logic"
+    //% weight=70
+    export function hero4Logic(button: string, heroIndex: number, enemiesArr: Sprite[], heroesArr: Sprite[]) {
+        const me = heroesArr[heroIndex]
+        let targetIndex = -1
+        if (me && enemiesArr.length > 0) {
+            let best = 1e9
+            for (let i = 0; i < enemiesArr.length; i++) {
+                const e = enemiesArr[i]
+                if (!e || (e.flags & sprites.Flag.Destroyed)) continue
+                const d = distanceTo(me, e)
+                if (d < best) { best = d; targetIndex = i }
+            }
         }
-    }
-    if (button == "B") return [FAMILY.AGILITY, 4, 30, 30, 30, ELEM.NONE, ANIM.ID.B]
-    if (button == "A+B") return [FAMILY.INTELLECT, 12, 25, 25, 25, ELEM.NONE, ANIM.ID.AB]
-    return [FAMILY.STRENGTH, 0, 25, 25, 25, ELEM.NONE, ANIM.ID.IDLE]
-}
 
-//% blockId=hero3_logic
-//% block="Hero 3 logic for button %button"
-//% blockNamespace=HeroEngine
-//% group="Hero logic"
-//% weight=100
-function hero3Logic(button: string, heroIndex: number, enemiesArr: Sprite[], heroesArr: Sprite[]) {
-    const me = heroesArr[heroIndex]
-    let targetIndex = -1
-    if (me && enemiesArr.length > 0) {
-        let best = 1e9
-        for (let i = 0; i < enemiesArr.length; i++) {
-            const e = enemiesArr[i]
-            if (!e || (e.flags & sprites.Flag.Destroyed)) continue
-            const d = distanceTo(me, e)
-            if (d < best) { best = d; targetIndex = i }
+        let anyHeroLow = false
+        for (let i = 0; i < heroesArr.length; i++) {
+            const h = heroesArr[i]
+            if (!h) continue
+            const hp = sprites.readDataNumber(h, HERO_DATA.HP) | 0
+            if (hp > 0 && hp < 50) {
+                anyHeroLow = true
+                break
+            }
         }
-    }
 
-    // --- NEW: check if any hero is below 100 HP ---
-    let anyHeroLow = false
-    for (let i = 0; i < heroesArr.length; i++) {
-        const h = heroesArr[i]
-        if (!h) continue
-        const hp = sprites.readDataNumber(h, HERO_DATA.HP) | 0
-        if (hp > 0 && hp < 50) {
-            anyHeroLow = true
-            break
+        if (button == "A") {
+            if (anyHeroLow) {
+                return [FAMILY.HEAL, 25, 25, 25, 25, ELEM.HEAL, ANIM.ID.A]
+            } else {
+                return [FAMILY.STRENGTH, 10, 10, 50, 200, ELEM.NONE, ANIM.ID.A]
+            }
         }
+        if (button == "B") return [FAMILY.AGILITY, 4, 30, 30, 30, ELEM.NONE, ANIM.ID.B]
+        if (button == "A+B") return [FAMILY.INTELLECT, 12, 25, 25, 25, ELEM.NONE, ANIM.ID.AB]
+        return [FAMILY.STRENGTH, 0, 25, 25, 25, ELEM.NONE, ANIM.ID.IDLE]
     }
 
+    // -----------------------------
+    // HERO IDLE ART + ANIMATION
+    // -----------------------------
 
+    const DEMO_HERO1_IDLE = img`...`  // your existing 4 images here
+    const DEMO_HERO2_IDLE = img`...`
+    const DEMO_HERO3_IDLE = img`...`
+    const DEMO_HERO4_IDLE = img`...`
 
-    // A: Strength, B: Agility, A+B: Intellect. If low HP on A, try Heal instead.
-    if (button == "A") {
-        if (anyHeroLow) {
-            return [FAMILY.HEAL, 25, 25, 25, 25, ELEM.HEAL, ANIM.ID.A]
-        } else {
-            return [FAMILY.STRENGTH, 10, 10, 50, 200, ELEM.NONE, ANIM.ID.A]
-        }
-    }
-    if (button == "B") return [FAMILY.AGILITY, 4, 30, 30, 30, ELEM.NONE, ANIM.ID.B]
-    if (button == "A+B") return [FAMILY.INTELLECT, 12, 25, 25, 25, ELEM.NONE, ANIM.ID.AB]
-    return [FAMILY.STRENGTH, 0, 25, 25, 25, ELEM.NONE, ANIM.ID.IDLE]
-}
-
-//% blockId=hero4_logic
-//% block="Hero 4 logic for button %button"
-//% blockNamespace=HeroEngine
-//% group="Hero logic"
-//% weight=100
-function hero4Logic(button: string, heroIndex: number, enemiesArr: Sprite[], heroesArr: Sprite[]) {
-    const me = heroesArr[heroIndex]
-    let targetIndex = -1
-    if (me && enemiesArr.length > 0) {
-        let best = 1e9
-        for (let i = 0; i < enemiesArr.length; i++) {
-            const e = enemiesArr[i]
-            if (!e || (e.flags & sprites.Flag.Destroyed)) continue
-            const d = distanceTo(me, e)
-            if (d < best) { best = d; targetIndex = i }
-        }
+    //% blockId=hero1_animate
+    //% block="Hero 1 animate for button $button"
+    //% group="Hero animations"
+    //% weight=100
+    export function animateHero1(hero: Sprite, animKey: string, timeMs: number, direction: string) {
+        hero.setImage(DEMO_HERO1_IDLE)
     }
 
-    // --- NEW: check if any hero is below 100 HP ---
-    let anyHeroLow = false
-    for (let i = 0; i < heroesArr.length; i++) {
-        const h = heroesArr[i]
-        if (!h) continue
-        const hp = sprites.readDataNumber(h, HERO_DATA.HP) | 0
-        if (hp > 0 && hp < 50) {
-            anyHeroLow = true
-            break
-        }
+    //% blockId=hero2_animate
+    //% block="Hero 2 animate for button $button"
+    //% group="Hero animations"
+    //% weight=90
+    export function animateHero2(hero: Sprite, animKey: string, timeMs: number, direction: string) {
+        hero.setImage(DEMO_HERO2_IDLE)
     }
 
-
-
-    // A: Strength, B: Agility, A+B: Intellect. If low HP on A, try Heal instead.
-    if (button == "A") {
-        if (anyHeroLow) {
-            return [FAMILY.HEAL, 25, 25, 25, 25, ELEM.HEAL, ANIM.ID.A]
-        } else {
-            return [FAMILY.STRENGTH, 10, 10, 50, 200, ELEM.NONE, ANIM.ID.A]
-        }
+    //% blockId=hero3_animate
+    //% block="Hero 3 animate for button $button"
+    //% group="Hero animations"
+    //% weight=80
+    export function animateHero3(hero: Sprite, animKey: string, timeMs: number, direction: string) {
+        hero.setImage(DEMO_HERO3_IDLE)
     }
-    if (button == "B") return [FAMILY.AGILITY, 4, 30, 30, 30, ELEM.NONE, ANIM.ID.B]
-    if (button == "A+B") return [FAMILY.INTELLECT, 12, 25, 25, 25, ELEM.NONE, ANIM.ID.AB]
-    return [FAMILY.STRENGTH, 0, 25, 25, 25, ELEM.NONE, ANIM.ID.IDLE]
-}
 
-
-// Animation hooks (students replace images later)
-//// Temporary "idle" art for each hero.
-// Students will replace these with their own images/animations.
-
-const DEMO_HERO1_IDLE = img`
-    . . . . . . f f f f . . . . . .
-    . . . . f f f 2 2 f f f . . . .
-    . . . f f f 2 2 2 2 f f f . . .
-    . . f f f e e e e e e f f f . .
-    . . f f e 2 2 2 2 2 2 e e f . .
-    . . f e 2 f f f f f f 2 e f . .
-    . . f f f f e e e e f f f f . .
-    . f f e f b f 4 4 f b f e f f .
-    . f e e 4 1 f d d f 1 4 e e f .
-    . . f e e d d d d d d e e f . .
-    . . . f e e 4 4 4 4 e e f . . .
-    . . e 4 f 2 2 2 2 2 2 f 4 e . .
-    . . 4 d f 2 2 2 2 2 2 f d 4 . .
-    . . 4 4 f 4 4 5 5 4 4 f 4 4 . .
-    . . . . . f f f f f f . . . . .
-    . . . . . f f . . f f . . . . .
-`
-const DEMO_HERO2_IDLE = img`
-    . . . . . . c c c c . . . . . .
-    . . . . c c c 5 5 c c c . . . .
-    . . . c c c 5 5 5 5 c c c . . .
-    . . c c c e e e e e e c c c . .
-    . . c c e 5 5 5 5 5 5 e e c . .
-    . . c e 5 c c c c c c 5 e c . .
-    . . c c c c e e e e c c c c . .
-    . c c e c b c 4 4 c b c e c c .
-    . c e e 4 1 c d d c 1 4 e e c .
-    . . c e e d d d d d d e e c . .
-    . . . c e e 4 4 4 4 e e c . . .
-    . . e 4 c 5 5 5 5 5 5 c 4 e . .
-    . . 4 d c 5 5 5 5 5 5 c d 4 . .
-    . . 4 4 c 4 4 7 7 4 4 c 4 4 . .
-    . . . . . c c c c c c . . . . .
-    . . . . . c c . . c c . . . . .
-`
-const DEMO_HERO3_IDLE = img`
-    . . . . . . 6 6 6 6 . . . . . .
-    . . . . 6 6 6 3 3 6 6 6 . . . .
-    . . . 6 6 6 3 3 3 3 6 6 6 . . .
-    . . 6 6 6 e e e e e e 6 6 6 . .
-    . . 6 6 e 3 3 3 3 3 3 e e 6 . .
-    . . 6 e 3 6 6 6 6 6 6 3 e 6 . .
-    . . 6 6 6 6 e e e e 6 6 6 6 . .
-    . 6 6 e 6 b 6 4 4 6 b 6 e 6 6 .
-    . 6 e e 4 1 6 d d 6 1 4 e e 6 .
-    . . 6 e e d d d d d d e e 6 . .
-    . . . 6 e e 4 4 4 4 e e 6 . . .
-    . . e 4 6 3 3 3 3 3 3 6 4 e . .
-    . . 4 d 6 3 3 3 3 3 3 6 d 4 . .
-    . . 4 4 6 4 4 9 9 4 4 6 4 4 . .
-    . . . . . 6 6 6 6 6 6 . . . . .
-    . . . . . 6 6 . . 6 6 . . . . .
-`
-const DEMO_HERO4_IDLE = img`
-    . . . . . . 8 8 8 8 . . . . . .
-    . . . . 8 8 8 7 7 8 8 8 . . . .
-    . . . 8 8 8 7 7 7 7 8 8 8 . . .
-    . . 8 8 8 e e e e e e 8 8 8 . .
-    . . 8 8 e 7 7 7 7 7 7 e e 8 . .
-    . . 8 e 7 8 8 8 8 8 8 7 e 8 . .
-    . . 8 8 8 8 e e e e 8 8 8 8 . .
-    . 8 8 e 8 b 8 4 4 8 b 8 e 8 8 .
-    . 8 e e 4 1 8 d d 8 1 4 e e 8 .
-    . . 8 e e d d d d d d e e 8 . .
-    . . . 8 e e 4 4 4 4 e e 8 . . .
-    . . e 4 8 7 7 7 7 7 7 8 4 e . .
-    . . 4 d 8 7 7 7 7 7 7 8 d 4 . .
-    . . 4 4 8 4 4 9 9 4 4 8 4 4 . .
-    . . . . . 8 8 8 8 8 8 . . . . .
-    . . . . . 8 8 . . 8 8 . . . . .
-`
-
-// Students can replace this logic completely.
-// Right now, each hero just uses its idle image regardless of direction or animKey.
-
-
-//% blockId=hero1_animate
-//% block="Hero 1 animate for button %button"
-//% blockNamespace=HeroEngine
-//% group="Hero animations"
-//% weight=100
-function animateHero1(hero: Sprite, animKey: string, timeMs: number, direction: string) {
-    hero.setImage(DEMO_HERO1_IDLE)
-}
-
-//% blockId=hero2_animate
-//% block="Hero 2 animate for button %button"
-//% blockNamespace=HeroEngine
-//% group="Hero animations"
-//% weight=100
-function animateHero2(hero: Sprite, animKey: string, timeMs: number, direction: string) {
-    hero.setImage(DEMO_HERO2_IDLE)
-}
-
-//% blockId=hero3_animate
-//% block="Hero 3 animate for button %button"
-//% blockNamespace=HeroEngine
-//% group="Hero animations"
-//% weight=100
-function animateHero3(hero: Sprite, animKey: string, timeMs: number, direction: string) {
-    hero.setImage(DEMO_HERO3_IDLE)
-}
-
-//% blockId=hero4_animate
-//% block="Hero 4 animate for button %button"
-//% blockNamespace=HeroEngine
-//% group="Hero animations"
-//% weight=100
-function animateHero4(hero: Sprite, animKey: string, timeMs: number, direction: string) {
-    hero.setImage(DEMO_HERO4_IDLE)
+    //% blockId=hero4_animate
+    //% block="Hero 4 animate for button $button"
+    //% group="Hero animations"
+    //% weight=70
+    export function animateHero4(hero: Sprite, animKey: string, timeMs: number, direction: string) {
+        hero.setImage(DEMO_HERO4_IDLE)
+    }
 }
 
 
