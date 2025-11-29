@@ -836,6 +836,23 @@ namespace HeroEngine {
 }
 
 
+
+
+// Bridges so existing engine code using plain names still works
+const hero1Logic = HeroEngine.hero1Logic;
+const hero2Logic = HeroEngine.hero2Logic;
+const hero3Logic = HeroEngine.hero3Logic;
+const hero4Logic = HeroEngine.hero4Logic;
+
+const animateHero1 = HeroEngine.animateHero1;
+const animateHero2 = HeroEngine.animateHero2;
+const animateHero3 = HeroEngine.animateHero3;
+const animateHero4 = HeroEngine.animateHero4;
+
+
+
+
+
 // ================================================================
 // SECTION 4 - PLAYER SPRITES CREATION AND CONTROL
 // ================================================================
