@@ -1,1 +1,5 @@
-// main.ts
+/**
+ * main.ts
+ */
+HeroEngine.animateHero1(
+)

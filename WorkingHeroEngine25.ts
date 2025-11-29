@@ -149,6 +149,23 @@
 // will swallow any runtime issue if it's missing.
 
 
+// --------------------------------------------------------------
+// Sprite kinds - type declarations for TS
+// --------------------------------------------------------------
+
+// --------------------------------------------------------------
+// Sprite kinds - type declarations for TS (no top-level create())
+// --------------------------------------------------------------
+namespace SpriteKind {
+    export let Hero: number
+    export let HeroWeapon: number
+    export let HeroAura: number
+    export let EnemySpawner: number
+    export let SupportBeam: number
+    export let SupportIcon: number
+}
+
+
 
 
 
@@ -188,22 +205,30 @@ namespace userconfig {
     export const ARCADE_SCREEN_HEIGHT = 480
 }
 
-// --------------------------------------------------------------
-// Sprite kinds
-// Used by: overlap handlers, queries, filtering by kind
-// NOTE: Enemies use built-in SpriteKind.Enemy
-// --------------------------------------------------------------
-namespace SpriteKind {
-    export const Hero = SpriteKind.create()
-    export const HeroWeapon = SpriteKind.create()
-    export const HeroAura = SpriteKind.create()
-    export const EnemySpawner = SpriteKind.create()
 
-    // Support visuals
-    export const SupportBeam = SpriteKind.create()
-    export const SupportIcon = SpriteKind.create()
-    // IMPORTANT: Use built-in SpriteKind.Enemy (do NOT redeclare)
+
+
+// --------------------------------------------------------------
+// Sprite kinds (lazy init for extension safety)
+// --------------------------------------------------------------
+
+let _heroKindsInitialized = false
+
+function ensureHeroSpriteKinds() {
+    if (_heroKindsInitialized) return
+    _heroKindsInitialized = true
+
+    // Attach new kinds onto the SpriteKind namespace
+    SpriteKind.Hero = SpriteKind.create()
+    SpriteKind.HeroWeapon = SpriteKind.create()
+    SpriteKind.HeroAura = SpriteKind.create()
+    SpriteKind.EnemySpawner = SpriteKind.create()
+    SpriteKind.SupportBeam = SpriteKind.create()
+    SpriteKind.SupportIcon = SpriteKind.create()
 }
+
+
+
 
 // --------------------------------------------------------------
 // Family / element enums
@@ -1538,6 +1563,8 @@ function createAuraImageFromHero(hero: Sprite, color: number): Image {
     return outline
 }
 
+
+
 function ensureHeroAuraSprite(heroIndex: number): Sprite {
     let aura = heroAuras[heroIndex]
     const hero = heroes[heroIndex]; if (!hero) return null
@@ -1548,6 +1575,8 @@ function ensureHeroAuraSprite(heroIndex: number): Sprite {
     aura.z = hero.z + 1
     return aura
 }
+
+
 
 function updateHeroAuras() {
     const now = game.runtime()
@@ -4592,6 +4621,7 @@ game.onUpdateInterval(ENEMY_SPAWN_INTERVAL_MS, function () {
 })
 
 // Startup
+ensureHeroSpriteKinds()
 scene.setBackgroundColor(1)
 setupHeroes()
 setupTestEnemies()
