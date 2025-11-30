@@ -149,6 +149,85 @@
 // will swallow any runtime issue if it's missing.
 
 
+
+
+
+// ================================================================
+// External hero hooks – implemented in the user project (main.ts)
+// ================================================================
+
+// Logic hooks: must return an OUT array-like structure
+
+// ================================================================
+// Default hero hooks – safe stubs for the extension itself.
+// Student projects will override these in main.ts with their own
+// heroXLogic / animateHeroX functions.
+// ================================================================
+
+// ================================================================
+// Default hero hooks – safe stubs for the extension itself.
+// Student projects will override these in main.ts with their own
+// heroXLogic / animateHeroX functions.
+// ================================================================
+
+function hero1Logic(
+    button: string,
+    heroIndex: number,
+    enemiesArr: Sprite[],
+    heroesArr: Sprite[]
+): number[] {
+    // Very conservative default: do nothing / idle
+    return [FAMILY.STRENGTH, 0, 0, 0, 0, ELEM.NONE, ANIM.ID.IDLE]
+}
+
+function hero2Logic(
+    button: string,
+    heroIndex: number,
+    enemiesArr: Sprite[],
+    heroesArr: Sprite[]
+): number[] {
+    return hero1Logic(button, heroIndex, enemiesArr, heroesArr)
+}
+
+function hero3Logic(
+    button: string,
+    heroIndex: number,
+    enemiesArr: Sprite[],
+    heroesArr: Sprite[]
+): number[] {
+    return hero1Logic(button, heroIndex, enemiesArr, heroesArr)
+}
+
+function hero4Logic(
+    button: string,
+    heroIndex: number,
+    enemiesArr: Sprite[],
+    heroesArr: Sprite[]
+): number[] {
+    return hero1Logic(button, heroIndex, enemiesArr, heroesArr)
+}
+
+// Animation hooks – default to no-op so extension runs
+function animateHero1(hero: Sprite, animKey: string, timeMs: number, direction: string): void {
+    // leave hero image as-is by default
+}
+
+function animateHero2(hero: Sprite, animKey: string, timeMs: number, direction: string): void {
+    animateHero1(hero, animKey, timeMs, direction)
+}
+
+function animateHero3(hero: Sprite, animKey: string, timeMs: number, direction: string): void {
+    animateHero1(hero, animKey, timeMs, direction)
+}
+
+function animateHero4(hero: Sprite, animKey: string, timeMs: number, direction: string): void {
+    animateHero1(hero, animKey, timeMs, direction)
+}
+
+
+
+
+
 // --------------------------------------------------------------
 // Sprite kinds - type declarations for TS
 // --------------------------------------------------------------
@@ -646,19 +725,6 @@ function r3(v: number) { return Math.round(v * 1000) / 1000 }
 
 
 
-// Bridges so existing engine code using plain names still works
-const hero1Logic = HeroEngine.hero1Logic;
-const hero2Logic = HeroEngine.hero2Logic;
-const hero3Logic = HeroEngine.hero3Logic;
-const hero4Logic = HeroEngine.hero4Logic;
-
-const animateHero1 = HeroEngine.animateHero1;
-const animateHero2 = HeroEngine.animateHero2;
-const animateHero3 = HeroEngine.animateHero3;
-const animateHero4 = HeroEngine.animateHero4;
-
-
-
 
 
 // ================================================================
@@ -737,50 +803,6 @@ function runHeroLogicForHero(heroIndex: number, button: string) {
     return hero1Logic(button, heroIndex, enemies, heroes)
 }
 
-
-
-function runHeroLogicForHeroOLD(heroIndex: number, button: string) {
-    const hero = heroes[heroIndex]
-    if (!hero) return null
-
-    // Which profile / student owns this hero?
-    const profile = getHeroProfileForHeroIndex(heroIndex)
-
-    // OPTIONAL: host-provided hero logic (VS / Phaser only)
-    // This is a no-op in MakeCode Arcade if globalThis or these hooks don't exist.
-    try {
-        const g: any = globalThis
-
-        // Option A: mapping by profile name
-        //    globalThis.__heroLogicByProfile["Alice"](button, heroIndex, enemies, heroes)
-        if (g && g.__heroLogicByProfile && typeof g.__heroLogicByProfile[profile] === "function") {
-            return g.__heroLogicByProfile[profile](button, heroIndex, enemies, heroes)
-        }
-
-        // Option B: mapping by hero index
-        //    globalThis.__heroLogicByIndex[0](button, heroIndex, enemies, heroes)
-        if (g && g.__heroLogicByIndex && typeof g.__heroLogicByIndex[heroIndex] === "function") {
-            return g.__heroLogicByIndex[heroIndex](button, heroIndex, enemies, heroes)
-        }
-
-        // Option C: dynamic function name based on profile:
-        //    function heroLogic_Alice(button, idx, enemies, heroes) { ... }
-        //    globalThis.heroLogic_Alice = ...
-        const funcName = "heroLogic_" + profile
-        if (g && typeof g[funcName] === "function") {
-            return g[funcName](button, heroIndex, enemies, heroes)
-        }
-    } catch (e) {
-        // Ignore: environments without globalThis or hooks just fall through.
-    }
-
-    // Built-in default routing (exact original behavior)
-    if (heroIndex == 0) return hero1Logic(button, heroIndex, enemies, heroes)
-    if (heroIndex == 1) return hero2Logic(button, heroIndex, enemies, heroes)
-    if (heroIndex == 2) return hero3Logic(button, heroIndex, enemies, heroes)
-    if (heroIndex == 3) return hero4Logic(button, heroIndex, enemies, heroes)
-    return hero1Logic(button, heroIndex, enemies, heroes)
-}
 
 
 
