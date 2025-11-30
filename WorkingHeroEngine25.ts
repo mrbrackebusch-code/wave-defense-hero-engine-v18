@@ -164,65 +164,66 @@
 // heroXLogic / animateHeroX functions.
 // ================================================================
 
+
+
+
+
+
+
 // ================================================================
-// Default hero hooks – safe stubs for the extension itself.
-// Student projects will override these in main.ts with their own
-// heroXLogic / animateHeroX functions.
+// Hero logic / animation hooks (extension side)
+// Students will assign their functions to these from main.ts
 // ================================================================
+namespace HeroEngine {
+    export type HeroLogicFn = (
+        button: string,
+        heroIndex: number,
+        enemiesArr: Sprite[],
+        heroesArr: Sprite[]
+    ) => number[];
 
-function hero1Logic(
-    button: string,
-    heroIndex: number,
-    enemiesArr: Sprite[],
-    heroesArr: Sprite[]
-): number[] {
-    // Very conservative default: do nothing / idle
-    return [FAMILY.STRENGTH, 0, 0, 0, 0, ELEM.NONE, ANIM.ID.IDLE]
+    export type HeroAnimFn = (
+        hero: Sprite,
+        animKey: string,
+        timeMs: number,
+        direction: string
+    ) => void;
+
+    function defaultHeroLogic(
+        button: string,
+        heroIndex: number,
+        enemiesArr: Sprite[],
+        heroesArr: Sprite[]
+    ): number[] {
+        // Do nothing / idle – safe default
+        return [FAMILY.STRENGTH, 0, 0, 0, 0, ELEM.NONE, ANIM.ID.IDLE];
+    }
+
+    function defaultHeroAnim(
+        hero: Sprite,
+        animKey: string,
+        timeMs: number,
+        direction: string
+    ): void {
+        // no-op default
+    }
+
+    // These are what the engine will actually call:
+    export let hero1LogicHook: HeroLogicFn = defaultHeroLogic;
+    export let hero2LogicHook: HeroLogicFn = defaultHeroLogic;
+    export let hero3LogicHook: HeroLogicFn = defaultHeroLogic;
+    export let hero4LogicHook: HeroLogicFn = defaultHeroLogic;
+
+    export let animateHero1Hook: HeroAnimFn = defaultHeroAnim;
+    export let animateHero2Hook: HeroAnimFn = defaultHeroAnim;
+    export let animateHero3Hook: HeroAnimFn = defaultHeroAnim;
+    export let animateHero4Hook: HeroAnimFn = defaultHeroAnim;
 }
 
-function hero2Logic(
-    button: string,
-    heroIndex: number,
-    enemiesArr: Sprite[],
-    heroesArr: Sprite[]
-): number[] {
-    return hero1Logic(button, heroIndex, enemiesArr, heroesArr)
-}
 
-function hero3Logic(
-    button: string,
-    heroIndex: number,
-    enemiesArr: Sprite[],
-    heroesArr: Sprite[]
-): number[] {
-    return hero1Logic(button, heroIndex, enemiesArr, heroesArr)
-}
 
-function hero4Logic(
-    button: string,
-    heroIndex: number,
-    enemiesArr: Sprite[],
-    heroesArr: Sprite[]
-): number[] {
-    return hero1Logic(button, heroIndex, enemiesArr, heroesArr)
-}
 
-// Animation hooks – default to no-op so extension runs
-function animateHero1(hero: Sprite, animKey: string, timeMs: number, direction: string): void {
-    // leave hero image as-is by default
-}
 
-function animateHero2(hero: Sprite, animKey: string, timeMs: number, direction: string): void {
-    animateHero1(hero, animKey, timeMs, direction)
-}
-
-function animateHero3(hero: Sprite, animKey: string, timeMs: number, direction: string): void {
-    animateHero1(hero, animKey, timeMs, direction)
-}
-
-function animateHero4(hero: Sprite, animKey: string, timeMs: number, direction: string): void {
-    animateHero1(hero, animKey, timeMs, direction)
-}
 
 
 
@@ -795,12 +796,15 @@ function runHeroLogicForHero(heroIndex: number, button: string) {
         if (hostOut && hostOut.length) return hostOut
     }
 
-    // 2) Built-in default routing (exact original behavior)
-    if (heroIndex == 0) return hero1Logic(button, heroIndex, enemies, heroes)
-    if (heroIndex == 1) return hero2Logic(button, heroIndex, enemies, heroes)
-    if (heroIndex == 2) return hero3Logic(button, heroIndex, enemies, heroes)
-    if (heroIndex == 3) return hero4Logic(button, heroIndex, enemies, heroes)
-    return hero1Logic(button, heroIndex, enemies, heroes)
+    // 2) Built-in routing via hooks
+    if (heroIndex == 0) return HeroEngine.hero1LogicHook(button, heroIndex, enemies, heroes)
+    if (heroIndex == 1) return HeroEngine.hero2LogicHook(button, heroIndex, enemies, heroes)
+    if (heroIndex == 2) return HeroEngine.hero3LogicHook(button, heroIndex, enemies, heroes)
+    if (heroIndex == 3) return HeroEngine.hero4LogicHook(button, heroIndex, enemies, heroes)
+    
+    // Fallback: hero 1 logic
+    return HeroEngine.hero1LogicHook(button, heroIndex, enemies, heroes)
+
 }
 
 
@@ -1255,10 +1259,12 @@ function callHeroAnim(heroIndex: number, animKey: string, timeMs: number) {
     if (family == FAMILY.STRENGTH || family == FAMILY.INTELLECT || family == FAMILY.HEAL) hero.startEffect(effects.trail, timeMs)
     const direction = getHeroDirectionName(heroIndex)
     const playerId = sprites.readDataNumber(hero, HERO_DATA.OWNER)
-    if (playerId == 1) animateHero1(hero, animKey, timeMs, direction)
-    else if (playerId == 2) animateHero2(hero, animKey, timeMs, direction)
-    else if (playerId == 3) animateHero3(hero, animKey, timeMs, direction)
-    else if (playerId == 4) animateHero4(hero, animKey, timeMs, direction)
+    
+    if (playerId == 1) HeroEngine.animateHero1Hook(hero, animKey, timeMs, direction)
+    else if (playerId == 2) HeroEngine.animateHero2Hook(hero, animKey, timeMs, direction)
+    else if (playerId == 3) HeroEngine.animateHero3Hook(hero, animKey, timeMs, direction)
+    else if (playerId == 4) HeroEngine.animateHero4Hook(hero, animKey, timeMs, direction)
+
 }
 
 
