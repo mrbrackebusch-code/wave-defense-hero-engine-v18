@@ -200,8 +200,8 @@ namespace HeroEngine {
     export type HeroLogicFn = (
         button: string,
         heroIndex: number,
-        enemiesArr: Sprite[],
-        heroesArr: Sprite[]
+        enemiesArr: any[],
+        heroesArr: any[]
     ) => number[];
 
     export type HeroAnimFn = (
