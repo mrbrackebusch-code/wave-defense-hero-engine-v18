@@ -231,15 +231,18 @@ namespace HeroEngine {
     }
 
     // These are what the engine will actually call:
-    export let hero1LogicHook: HeroLogicFn = defaultHeroLogic;
-    export let hero2LogicHook: HeroLogicFn = defaultHeroLogic;
-    export let hero3LogicHook: HeroLogicFn = defaultHeroLogic;
-    export let hero4LogicHook: HeroLogicFn = defaultHeroLogic;
-
+    // These are what the engine will actually call:
+    export let hero1LogicHook: any = defaultHeroLogic;
+    export let hero2LogicHook: any = defaultHeroLogic;
+    export let hero3LogicHook: any = defaultHeroLogic;
+    export let hero4LogicHook: any = defaultHeroLogic;
+    
+    // Animation hooks can stay strongly typed:
     export let animateHero1Hook: HeroAnimFn = defaultHeroAnim;
     export let animateHero2Hook: HeroAnimFn = defaultHeroAnim;
     export let animateHero3Hook: HeroAnimFn = defaultHeroAnim;
     export let animateHero4Hook: HeroAnimFn = defaultHeroAnim;
+    
 
 
     let _started = false
