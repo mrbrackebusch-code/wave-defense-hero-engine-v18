@@ -174,6 +174,28 @@
 // Hero logic / animation hooks (extension side)
 // Students will assign their functions to these from main.ts
 // ================================================================
+
+
+
+
+
+// --------------------------------------------------------------
+// Sprite kinds - type declarations for TS
+// --------------------------------------------------------------
+
+// --------------------------------------------------------------
+// Sprite kinds - type declarations for TS (no top-level create())
+// --------------------------------------------------------------
+namespace SpriteKind {
+    export let Hero: number
+    export let HeroWeapon: number
+    export let HeroAura: number
+    export let EnemySpawner: number
+    export let SupportBeam: number
+    export let SupportIcon: number
+}
+
+
 namespace HeroEngine {
     export type HeroLogicFn = (
         button: string,
@@ -218,32 +240,30 @@ namespace HeroEngine {
     export let animateHero2Hook: HeroAnimFn = defaultHeroAnim;
     export let animateHero3Hook: HeroAnimFn = defaultHeroAnim;
     export let animateHero4Hook: HeroAnimFn = defaultHeroAnim;
+
+
+    let _started = false
+
+    //% blockId=heroEngine_start
+    //% block="start hero engine"
+    //% group="Setup"
+    //% weight=100
+    export function start() {
+        if (_started) return
+        _started = true
+
+        ensureHeroSpriteKinds()
+        scene.setBackgroundColor(1)
+        setupHeroes()
+        setupTestEnemies()
+        setupEnemySpawners()
+    }
 }
 
 
 
 
 
-
-
-
-
-
-// --------------------------------------------------------------
-// Sprite kinds - type declarations for TS
-// --------------------------------------------------------------
-
-// --------------------------------------------------------------
-// Sprite kinds - type declarations for TS (no top-level create())
-// --------------------------------------------------------------
-namespace SpriteKind {
-    export let Hero: number
-    export let HeroWeapon: number
-    export let HeroAura: number
-    export let EnemySpawner: number
-    export let SupportBeam: number
-    export let SupportIcon: number
-}
 
 
 
